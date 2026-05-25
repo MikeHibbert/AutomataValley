@@ -1,0 +1,169 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/dojo_root.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/bridge_client.gd" id="2_bridge"]
+[ext_resource type="Script" path="res://scripts/stt_client.gd" id="3_stt"]
+[ext_resource type="Script" path="res://scripts/tts_client.gd" id="4_tts"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(18, 18)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_robot"]
+radius = 0.45
+mid_height = 1.2
+
+[node name="DojoRoot" type="Node3D"]
+script = ExtResource("1_root")
+
+[node name="BridgeClient" type="Node" parent="."]
+script = ExtResource("2_bridge")
+
+[node name="SttClient" type="Node" parent="."]
+script = ExtResource("3_stt")
+
+[node name="TtsClient" type="Node" parent="."]
+script = ExtResource("4_tts")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819152, -0.469846, 0.32899, 0, 0.573576, 0.819152, -0.573576, -0.67101, 0.469846, 0, 5, 0)
+light_energy = 1.4
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 5.5, 9)
+current = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+
+[node name="Robot" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("CapsuleMesh_robot")
+
+[node name="Overlay" type="CanvasLayer" parent="."]
+
+[node name="CommandPanel" type="PanelContainer" parent="Overlay"]
+offset_left = 16.0
+offset_top = 128.0
+offset_right = 336.0
+offset_bottom = 292.0
+
+[node name="PanelMargin" type="MarginContainer" parent="Overlay/CommandPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CommandVBox" type="VBoxContainer" parent="Overlay/CommandPanel/PanelMargin"]
+theme_override_constants/separation = 8
+
+[node name="PanelTitle" type="Label" parent="Overlay/CommandPanel/PanelMargin/CommandVBox"]
+text = "Operator Controls"
+
+[node name="CommandInput" type="LineEdit" parent="Overlay/CommandPanel/PanelMargin/CommandVBox"]
+placeholder_text = "Type a command, e.g. move north"
+
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/CommandPanel/PanelMargin/CommandVBox"]
+theme_override_constants/separation = 8
+
+[node name="SubmitButton" type="Button" parent="Overlay/CommandPanel/PanelMargin/CommandVBox/ButtonRow"]
+text = "Send"
+
+[node name="MoveNorthButton" type="Button" parent="Overlay/CommandPanel/PanelMargin/CommandVBox/ButtonRow"]
+text = "Move North"
+
+[node name="GoToTableButton" type="Button" parent="Overlay/CommandPanel/PanelMargin/CommandVBox/ButtonRow"]
+text = "Go To Table"
+
+[node name="VoicePanel" type="PanelContainer" parent="Overlay"]
+offset_left = 352.0
+offset_top = 128.0
+offset_right = 760.0
+offset_bottom = 404.0
+
+[node name="VoiceMargin" type="MarginContainer" parent="Overlay/VoicePanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VoiceVBox" type="VBoxContainer" parent="Overlay/VoicePanel/VoiceMargin"]
+theme_override_constants/separation = 8
+
+[node name="VoiceTitle" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+text = "Voice Command"
+
+[node name="VoiceStateLabel" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+text = "Voice: idle"
+
+[node name="TranscriptLabel" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+autowrap_mode = 3
+text = "Transcript: none"
+
+[node name="VoiceHintLabel" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+autowrap_mode = 3
+text = "Push To Talk now records microphone audio and sends it to the live STT service. You can still upload a WAV/OGG sample for manual testing."
+
+[node name="AudioFileLabel" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+autowrap_mode = 3
+text = "Audio File: none"
+
+[node name="VoiceButtonRow" type="HBoxContainer" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+theme_override_constants/separation = 8
+
+[node name="PushToTalkButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/VoiceButtonRow"]
+text = "Push To Talk"
+
+[node name="UseTranscriptButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/VoiceButtonRow"]
+text = "Use Transcript"
+
+[node name="ClearTranscriptButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/VoiceButtonRow"]
+text = "Clear"
+
+[node name="AudioButtonRow" type="HBoxContainer" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+theme_override_constants/separation = 8
+
+[node name="UploadAudioButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/AudioButtonRow"]
+text = "Upload Audio"
+
+[node name="TranscribeAudioButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/AudioButtonRow"]
+text = "Transcribe Audio"
+
+[node name="SuggestionLabel" type="Label" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+autowrap_mode = 3
+text = "Suggestions: none"
+
+[node name="SuggestionButtonRow" type="HBoxContainer" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox"]
+theme_override_constants/separation = 8
+
+[node name="SuggestionOneButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/SuggestionButtonRow"]
+text = "Suggestion 1"
+
+[node name="SuggestionTwoButton" type="Button" parent="Overlay/VoicePanel/VoiceMargin/VoiceVBox/SuggestionButtonRow"]
+text = "Suggestion 2"
+
+[node name="StatusLabel" type="Label" parent="Overlay"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 650.0
+offset_bottom = 44.0
+text = "Dojo starting..."
+
+[node name="CommandLabel" type="Label" parent="Overlay"]
+offset_left = 16.0
+offset_top = 52.0
+offset_right = 900.0
+offset_bottom = 80.0
+text = "Command: none"
+
+[node name="TargetLabel" type="Label" parent="Overlay"]
+offset_left = 16.0
+offset_top = 88.0
+offset_right = 900.0
+offset_bottom = 116.0
+text = "Target: none"
+
+[node name="AudioFileDialog" type="FileDialog" parent="."]
+title = "Select Audio Sample"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.wav ; WAV Audio", "*.ogg ; OGG Audio", "*.mp3 ; MP3 Audio")

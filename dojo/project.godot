@@ -1,0 +1,16 @@
+; Engine configuration file.
+; Minimal Godot 4 project scaffold for AutomataValley Dojo.
+
+config_version=5
+
+[application]
+config/name="AutomataValley Dojo"
+run/main_scene="res://scenes/dojo.tscn"
+config/features=PackedStringArray("4.3")
+
+[audio]
+driver/enable_input=true
+general/text_to_speech=true
+
+[rendering]
+renderer/rendering_method="forward_plus"

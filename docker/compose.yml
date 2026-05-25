@@ -1,0 +1,57 @@
+name: automatavalley
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  stt:
+    build:
+      context: ..
+      dockerfile: docker/stt.Dockerfile
+    environment:
+      STT_ENGINE: parakeet
+      STT_MODE: real
+      PARAKEET_BACKEND: transformers
+      PARAKEET_MODEL_ID: nvidia/parakeet-ctc-0.6b
+    ports:
+      - "8003:8003"
+
+  valley:
+    build:
+      context: ..
+      dockerfile: docker/valley.Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      AUTOMATAVALLEY_LLM_URL: http://host.docker.internal:11434/v1/chat/completions
+      AUTOMATAVALLEY_LLM_MODEL: gemma3:latest
+    depends_on:
+      - redis
+    ports:
+      - "8001:8001"
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/bridge.Dockerfile
+    environment:
+      VALLEY_URL: http://valley:8001
+      DOJO_STT_URL: http://localhost:8003
+      DOJO_TTS_URL: http://localhost:8004
+    depends_on:
+      - valley
+      - stt
+      - tts
+    ports:
+      - "8002:8002"
+
+  tts:
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+    environment:
+      TTS_VOICE: en
+      TTS_RATE: 165
+    ports:
+      - "8004:8004"
