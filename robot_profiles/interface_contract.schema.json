@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatavalley.local/schemas/robot-profile.schema.json",
+  "title": "AutomataValley Robot Profile",
+  "type": "object",
+  "required": [
+    "profile_id",
+    "display_name",
+    "vendor",
+    "model",
+    "runtime",
+    "capabilities",
+    "transports",
+    "interfaces"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "software_version": {
+      "type": "string"
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "control_plane",
+        "simulation_mode_supported"
+      ],
+      "properties": {
+        "control_plane": {
+          "type": "string",
+          "enum": [
+            "ros2",
+            "rosbridge_websocket",
+            "http_robot_api",
+            "mcp_gateway"
+          ]
+        },
+        "simulation_mode_supported": {
+          "type": "boolean"
+        },
+        "shadow_mode_supported": {
+          "type": "boolean"
+        },
+        "recommended_host_os": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "transports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "secondary",
+              "fallback"
+            ]
+          },
+          "endpoint_example": {
+            "type": "string"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "interfaces": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "normalized_capability": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "topic",
+              "service",
+              "action",
+              "virtual"
+            ]
+          },
+          "entity_name": {
+            "type": "string"
+          },
+          "message_type": {
+            "type": "string"
+          },
+          "rate_hz": {
+            "type": "number"
+          },
+          "required_mode": {
+            "type": "string"
+          },
+          "writeable": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "normalized_capability",
+          "entity_type"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "requires_estop_monitor": {
+          "type": "boolean"
+        },
+        "requires_mode_gate": {
+          "type": "boolean"
+        },
+        "default_motion_mode": {
+          "type": "string"
+        },
+        "forbidden_interfaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "testing": {
+      "type": "object",
+      "properties": {
+        "smoke_suite": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "simulation_profile": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

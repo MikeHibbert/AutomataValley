@@ -4,11 +4,12 @@ from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 
 from .interpreter import interpret_command
-from .models import CommandPayload, HealthResponse, ValleyCommandResponse
+from .models import CommandPayload, HealthResponse, ImageObservationResponse, ValleyCommandResponse
 from .navigation import ROOM_WAYPOINTS, build_task_events
+from .world_model import build_world_state, infer_image_observations
 
 app = FastAPI(title="AutomataValley Valley Service", version="0.1.0")
 
@@ -32,6 +33,11 @@ def health() -> HealthResponse:
 @app.get("/waypoints")
 def list_waypoints() -> dict[str, dict[str, float]]:
     return ROOM_WAYPOINTS
+
+
+@app.get("/world")
+def get_world() -> dict[str, object]:
+    return build_world_state()
 
 
 @app.post("/commands", response_model=ValleyCommandResponse)
@@ -58,4 +64,22 @@ def submit_command(payload: CommandPayload) -> ValleyCommandResponse:
         task_id=task_id,
         intent=intent,
         events=events,
+    )
+
+
+@app.post("/observe/image", response_model=ImageObservationResponse)
+async def observe_image(
+    image: UploadFile = File(...),
+    note: str = Form(default=""),
+) -> ImageObservationResponse:
+    await image.read()
+    observations = infer_image_observations(image.filename or "", note)
+    if observations:
+        message = "Image observation complete. I found %s candidate scene item(s)." % len(observations)
+    else:
+        message = "Image observation complete. I did not match the upload to known dojo objects yet."
+    return ImageObservationResponse(
+        message=message,
+        observations=observations,
+        world=build_world_state(),
     )

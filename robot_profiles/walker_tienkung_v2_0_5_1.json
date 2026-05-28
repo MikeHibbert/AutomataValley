@@ -1,0 +1,339 @@
+{
+  "profile_id": "walker_tienkung_v2_0_5_1",
+  "display_name": "UBTech Walker Tienkung",
+  "vendor": "UBTech",
+  "model": "Walker Tienkung",
+  "software_version": "2.0.5.1",
+  "runtime": {
+    "control_plane": "ros2",
+    "simulation_mode_supported": true,
+    "shadow_mode_supported": true,
+    "recommended_host_os": "Ubuntu 22.04",
+    "notes": [
+      "Published SDK recommends Ubuntu 22.04.",
+      "Use this profile first in shadow mode before active control.",
+      "Many writable interfaces are mode-gated by proc_manager, body_control, or locomotion ownership."
+    ]
+  },
+  "capabilities": {
+    "robot.status.get": true,
+    "robot.power.get": true,
+    "robot.estop.get": true,
+    "robot.imu.get": true,
+    "robot.joints.get": true,
+    "robot.vision.capture_color": true,
+    "robot.vision.capture_depth": true,
+    "robot.vision.capture_pointcloud": true,
+    "robot.motion.set_mode": true,
+    "robot.motion.set_velocity": true,
+    "robot.motion.stop": true,
+    "robot.motion.set_velocity_limit": true,
+    "robot.posture.set_base": true,
+    "robot.head.move": true,
+    "robot.waist.move": true,
+    "robot.arm.move_pose": true,
+    "robot.hand.set_open_ratio": true,
+    "robot.hand.set_force": true,
+    "robot.hand.set_speed": true,
+    "robot.gesture.trigger_predefined": true
+  },
+  "transports": [
+    {
+      "name": "ros2_native",
+      "role": "primary",
+      "protocol": "DDS",
+      "notes": "Best fidelity path when the runtime can join the ROS 2 domain."
+    },
+    {
+      "name": "rosbridge_websocket",
+      "role": "secondary",
+      "endpoint_example": "ws://192.168.41.2:9090",
+      "protocol": "WebSocket",
+      "notes": "Recommended generic transport for AutomataValley if we want to stay configuration-driven."
+    }
+  ],
+  "interfaces": {
+    "battery_status": {
+      "normalized_capability": "robot.power.get",
+      "entity_type": "topic",
+      "entity_name": "/power/battery/status",
+      "message_type": "bodyctrl_msgs/msg/PowerBatteryStatus",
+      "rate_hz": 1,
+      "writeable": false,
+      "notes": "Main battery telemetry and charging state."
+    },
+    "power_board_status": {
+      "normalized_capability": "robot.status.get",
+      "entity_type": "topic",
+      "entity_name": "/power/board/status",
+      "message_type": "bodyctrl_msgs/msg/PowerStatus",
+      "rate_hz": 1,
+      "writeable": false
+    },
+    "estop_status": {
+      "normalized_capability": "robot.estop.get",
+      "entity_type": "topic",
+      "entity_name": "/power/board/key_status",
+      "message_type": "bodyctrl_msgs/msg/PowerBoardKeyStatus",
+      "rate_hz": 1,
+      "writeable": false
+    },
+    "imu_standard": {
+      "normalized_capability": "robot.imu.get",
+      "entity_type": "topic",
+      "entity_name": "/imu",
+      "message_type": "sensor_msgs/msg/Imu",
+      "writeable": false
+    },
+    "imu_custom": {
+      "normalized_capability": "robot.imu.get",
+      "entity_type": "topic",
+      "entity_name": "/imu/status",
+      "message_type": "bodyctrl_msgs/msg/Imu",
+      "writeable": false
+    },
+    "motion_mode": {
+      "normalized_capability": "robot.motion.set_mode",
+      "entity_type": "service",
+      "entity_name": "/hric/motion/set_motion_mode",
+      "message_type": "hric_msgs/srv/SetMotionMode",
+      "required_mode": "motion_control_active",
+      "writeable": true,
+      "notes": "Used for stop/zero/stand/walk/run transitions."
+    },
+    "motion_number": {
+      "normalized_capability": "robot.gesture.trigger_predefined",
+      "entity_type": "service",
+      "entity_name": "/hric/motion/set_motion_number",
+      "message_type": "hric_msgs/srv/SetMotionNumber",
+      "required_mode": "stand_with_e_key_up",
+      "writeable": true
+    },
+    "cmd_vel": {
+      "normalized_capability": "robot.motion.set_velocity",
+      "entity_type": "topic",
+      "entity_name": "/hric/robot/cmd_vel",
+      "message_type": "geometry_msgs/msg/TwistStamped",
+      "rate_hz": 20,
+      "required_mode": "walk_or_run_mode",
+      "writeable": true
+    },
+    "motion_status": {
+      "normalized_capability": "robot.status.get",
+      "entity_type": "topic",
+      "entity_name": "/hric/motion/status",
+      "message_type": "hric_msgs/msg/MotionStatus",
+      "rate_hz": 20,
+      "writeable": false
+    },
+    "float_base_command": {
+      "normalized_capability": "robot.posture.set_base",
+      "entity_type": "topic",
+      "entity_name": "/hric/robot/float_base_rpyz_cmd",
+      "message_type": "hric_msgs/msg/FloatBaseRPYZ",
+      "rate_hz": 400,
+      "required_mode": "stand_mode",
+      "writeable": true
+    },
+    "float_base_status": {
+      "normalized_capability": "robot.status.get",
+      "entity_type": "topic",
+      "entity_name": "/hric/robot/float_base_rpyz_status",
+      "message_type": "hric_msgs/msg/FloatBaseRPYZ",
+      "rate_hz": 400,
+      "writeable": false
+    },
+    "velocity_limit_set": {
+      "normalized_capability": "robot.motion.set_velocity_limit",
+      "entity_type": "topic",
+      "entity_name": "/hric/robot/set_vel_limit",
+      "message_type": "hric_msgs/msg/SetVelLimit",
+      "rate_hz": 400,
+      "required_mode": "zero_or_stop_mode",
+      "writeable": true
+    },
+    "velocity_limit_status": {
+      "normalized_capability": "robot.status.get",
+      "entity_type": "topic",
+      "entity_name": "/hric/robot/get_vel_limit",
+      "message_type": "hric_msgs/msg/GetVelLimit",
+      "rate_hz": 400,
+      "writeable": false
+    },
+    "head_status": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/head/status",
+      "message_type": "bodyctrl_msgs/msg/MotorStatusMsg",
+      "writeable": false
+    },
+    "head_position_command": {
+      "normalized_capability": "robot.head.move",
+      "entity_type": "topic",
+      "entity_name": "/head/cmd_pos",
+      "message_type": "bodyctrl_msgs/msg/CmdSetMotorPosition",
+      "required_mode": "body_control_ready",
+      "writeable": true
+    },
+    "waist_status": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/waist/status",
+      "message_type": "bodyctrl_msgs/msg/MotorStatusMsg",
+      "writeable": false
+    },
+    "waist_position_command": {
+      "normalized_capability": "robot.waist.move",
+      "entity_type": "topic",
+      "entity_name": "/waist/cmd_pos",
+      "message_type": "bodyctrl_msgs/msg/CmdSetMotorPosition",
+      "required_mode": "body_only_without_locomotion",
+      "writeable": true
+    },
+    "arm_status": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/arm/status",
+      "message_type": "bodyctrl_msgs/msg/MotorStatusMsg",
+      "writeable": false
+    },
+    "arm_position_command": {
+      "normalized_capability": "robot.arm.move_pose",
+      "entity_type": "topic",
+      "entity_name": "/arm/cmd_pos",
+      "message_type": "bodyctrl_msgs/msg/CmdSetMotorPosition",
+      "required_mode": "upper_body_control_or_body_only_without_locomotion",
+      "writeable": true
+    },
+    "arm_hybrid_command": {
+      "normalized_capability": "robot.arm.move_pose",
+      "entity_type": "topic",
+      "entity_name": "/arm/cmd_ctrl",
+      "message_type": "bodyctrl_msgs/msg/CmdMotorCtrl",
+      "required_mode": "upper_body_control_or_body_only_without_locomotion",
+      "writeable": true
+    },
+    "leg_status": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/leg/status",
+      "message_type": "bodyctrl_msgs/msg/MotorStatusMsg",
+      "writeable": false
+    },
+    "leg_position_command": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/leg/cmd_pos",
+      "message_type": "bodyctrl_msgs/msg/CmdSetMotorPosition",
+      "required_mode": "body_only_without_locomotion",
+      "writeable": true,
+      "notes": "Keep disabled in the first active milestone."
+    },
+    "left_hand_state": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/inspire_hand/state/left_hand",
+      "message_type": "sensor_msgs/msg/JointState",
+      "writeable": false
+    },
+    "right_hand_state": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "topic",
+      "entity_name": "/inspire_hand/state/right_hand",
+      "message_type": "sensor_msgs/msg/JointState",
+      "writeable": false
+    },
+    "left_hand_open_ratio": {
+      "normalized_capability": "robot.hand.set_open_ratio",
+      "entity_type": "service",
+      "entity_name": "/inspire_hand/set_angle_flexible/left_hand",
+      "message_type": "bodyctrl_msgs/srv/set_angle_flexible",
+      "required_mode": "hand_control_ready",
+      "writeable": true
+    },
+    "right_hand_open_ratio": {
+      "normalized_capability": "robot.hand.set_open_ratio",
+      "entity_type": "service",
+      "entity_name": "/inspire_hand/set_angle_flexible/right_hand",
+      "message_type": "bodyctrl_msgs/srv/set_angle_flexible",
+      "required_mode": "hand_control_ready",
+      "writeable": true
+    },
+    "left_hand_force": {
+      "normalized_capability": "robot.hand.set_force",
+      "entity_type": "service",
+      "entity_name": "/inspire_hand/set_force/left_hand",
+      "message_type": "bodyctrl_msgs/srv/set_force",
+      "required_mode": "hand_control_ready",
+      "writeable": true
+    },
+    "right_hand_force": {
+      "normalized_capability": "robot.hand.set_force",
+      "entity_type": "service",
+      "entity_name": "/inspire_hand/set_force/right_hand",
+      "message_type": "bodyctrl_msgs/srv/set_force",
+      "required_mode": "hand_control_ready",
+      "writeable": true
+    },
+    "color_image": {
+      "normalized_capability": "robot.vision.capture_color",
+      "entity_type": "topic",
+      "entity_name": "/camera/color/image_raw",
+      "message_type": "sensor_msgs/msg/Image",
+      "writeable": false,
+      "notes": "Avoid continuous remote subscription when bandwidth is constrained."
+    },
+    "depth_image": {
+      "normalized_capability": "robot.vision.capture_depth",
+      "entity_type": "topic",
+      "entity_name": "/camera/depth/image_raw",
+      "message_type": "sensor_msgs/msg/Image",
+      "writeable": false
+    },
+    "depth_points": {
+      "normalized_capability": "robot.vision.capture_pointcloud",
+      "entity_type": "topic",
+      "entity_name": "/camera/depth/points",
+      "message_type": "sensor_msgs/msg/PointCloud2",
+      "writeable": false
+    },
+    "lidar_points": {
+      "normalized_capability": "robot.vision.capture_pointcloud",
+      "entity_type": "topic",
+      "entity_name": "/livox/lidar",
+      "message_type": "sensor_msgs/msg/PointCloud2",
+      "writeable": false
+    },
+    "lidar_imu": {
+      "normalized_capability": "robot.imu.get",
+      "entity_type": "topic",
+      "entity_name": "/livox/imu",
+      "message_type": "sensor_msgs/msg/Imu",
+      "writeable": false
+    }
+  },
+  "safety": {
+    "requires_estop_monitor": true,
+    "requires_mode_gate": true,
+    "default_motion_mode": "shadow",
+    "forbidden_interfaces": [
+      "leg_position_command"
+    ],
+    "notes": [
+      "Do not expose arbitrary raw ROS publishing to LLM-facing tools.",
+      "Start with shadow mode and passive telemetry only.",
+      "Promote to active control only after battery, estop, motion status, and mode transitions are verified.",
+      "Avoid direct camera streaming over weak wireless links."
+    ]
+  },
+  "testing": {
+    "smoke_suite": [
+      "battery_status",
+      "estop_status",
+      "imu_standard",
+      "motion_status",
+      "color_image"
+    ],
+    "simulation_profile": "walker_tienkung_sim"
+  }
+}

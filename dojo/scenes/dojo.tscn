@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/dojo_root.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/bridge_client.gd" id="2_bridge"]
 [ext_resource type="Script" path="res://scripts/stt_client.gd" id="3_stt"]
 [ext_resource type="Script" path="res://scripts/tts_client.gd" id="4_tts"]
+[ext_resource type="Script" path="res://scripts/observation_client.gd" id="5_observation"]
+[ext_resource type="Script" path="res://scripts/vision_client.gd" id="6_vision"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(18, 18)
@@ -24,6 +26,12 @@ script = ExtResource("3_stt")
 [node name="TtsClient" type="Node" parent="."]
 script = ExtResource("4_tts")
 
+[node name="ObservationClient" type="Node" parent="."]
+script = ExtResource("5_observation")
+
+[node name="VisionClient" type="Node" parent="."]
+script = ExtResource("6_vision")
+
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.819152, -0.469846, 0.32899, 0, 0.573576, 0.819152, -0.573576, -0.67101, 0.469846, 0, 5, 0)
 light_energy = 1.4
@@ -38,6 +46,26 @@ mesh = SubResource("PlaneMesh_ground")
 [node name="Robot" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
 mesh = SubResource("CapsuleMesh_robot")
+
+[node name="RobotCameraRig" type="Node3D" parent="Robot"]
+
+[node name="FrontCam" type="Camera3D" parent="Robot/RobotCameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.996195, 0.0871557, 0, -0.0871557, 0.996195, 0, 0.65, 0.65)
+fov = 70.0
+
+[node name="LeftCam" type="Camera3D" parent="Robot/RobotCameraRig"]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.35, 0.55, 0.2)
+fov = 70.0
+
+[node name="RightCam" type="Camera3D" parent="Robot/RobotCameraRig"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.35, 0.55, 0.2)
+fov = 70.0
+
+[node name="RearCam" type="Camera3D" parent="Robot/RobotCameraRig"]
+transform = Transform3D(-1, 0, 0, 0, 0.996195, 0.0871557, 0, 0.0871557, -0.996195, 0, 0.6, -0.45)
+fov = 70.0
+
+[node name="WorldObjects" type="Node3D" parent="."]
 
 [node name="Overlay" type="CanvasLayer" parent="."]
 
@@ -79,6 +107,78 @@ offset_left = 352.0
 offset_top = 128.0
 offset_right = 760.0
 offset_bottom = 404.0
+
+[node name="WorldPanel" type="PanelContainer" parent="Overlay"]
+offset_left = 776.0
+offset_top = 128.0
+offset_right = 1184.0
+offset_bottom = 452.0
+
+[node name="WorldMargin" type="MarginContainer" parent="Overlay/WorldPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="WorldVBox" type="VBoxContainer" parent="Overlay/WorldPanel/WorldMargin"]
+theme_override_constants/separation = 8
+
+[node name="WorldTitle" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+text = "Dojo World"
+
+[node name="LiveFeedLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Live Feed: placeholder"
+
+[node name="VisionSessionLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Vision Session: inactive"
+
+[node name="VisionToolsLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "MCP Tools: none"
+
+[node name="CameraPickerLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+text = "Robot Camera"
+
+[node name="CameraPicker" type="OptionButton" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+
+[node name="HeldObjectLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Held Object: none"
+
+[node name="WorldObjectsLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Known Objects: none"
+
+[node name="WorldHintLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Upload an image to seed object observations. Live feed plumbing and manipulation tasks are now part of the dojo foundation."
+
+[node name="WorldButtonRow" type="HBoxContainer" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+theme_override_constants/separation = 8
+
+[node name="StartVisionButton" type="Button" parent="Overlay/WorldPanel/WorldMargin/WorldVBox/WorldButtonRow"]
+text = "Start Vision"
+
+[node name="SnapshotVisionButton" type="Button" parent="Overlay/WorldPanel/WorldMargin/WorldVBox/WorldButtonRow"]
+text = "Snapshot"
+
+[node name="StopVisionButton" type="Button" parent="Overlay/WorldPanel/WorldMargin/WorldVBox/WorldButtonRow"]
+text = "Stop Vision"
+
+[node name="ImageButtonRow" type="HBoxContainer" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+theme_override_constants/separation = 8
+
+[node name="UploadImageButton" type="Button" parent="Overlay/WorldPanel/WorldMargin/WorldVBox/ImageButtonRow"]
+text = "Upload Image"
+
+[node name="ObserveImageButton" type="Button" parent="Overlay/WorldPanel/WorldMargin/WorldVBox/ImageButtonRow"]
+text = "Observe Image"
+
+[node name="ObservationLabel" type="Label" parent="Overlay/WorldPanel/WorldMargin/WorldVBox"]
+autowrap_mode = 3
+text = "Observation: none"
 
 [node name="VoiceMargin" type="MarginContainer" parent="Overlay/VoicePanel"]
 theme_override_constants/margin_left = 12
@@ -167,3 +267,9 @@ title = "Select Audio Sample"
 file_mode = 0
 access = 2
 filters = PackedStringArray("*.wav ; WAV Audio", "*.ogg ; OGG Audio", "*.mp3 ; MP3 Audio")
+
+[node name="ImageFileDialog" type="FileDialog" parent="."]
+title = "Select Scene Image"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.png ; PNG Image", "*.jpg ; JPG Image", "*.jpeg ; JPEG Image", "*.webp ; WEBP Image")

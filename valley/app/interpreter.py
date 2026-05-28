@@ -13,6 +13,7 @@ from .navigation import (
     TARGET_ALIASES,
     canonicalize_target,
     normalize_text,
+    parse_dojo_command,
     parse_navigation_command,
 )
 
@@ -37,16 +38,20 @@ def interpret_command(command_text: str) -> dict[str, Any]:
     normalized = normalize_text(command_text)
 
     try:
-        intent = parse_navigation_command(normalized)
+        intent = parse_dojo_command(normalized)
         return _execute_response(normalized, intent)
     except CommandParseError:
         pass
+
+    pre_llm_result = _interpret_with_pre_llm_heuristics(normalized)
+    if pre_llm_result is not None:
+        return pre_llm_result
 
     llm_result = _interpret_with_llm(normalized)
     if llm_result is not None:
         return llm_result
 
-    return _interpret_with_heuristics(normalized)
+    return _interpret_with_post_llm_heuristics(normalized)
 
 
 def _interpret_with_llm(normalized: str) -> dict[str, Any] | None:
@@ -63,7 +68,18 @@ def _interpret_with_llm(normalized: str) -> dict[str, Any] | None:
             "Allowed commands are: "
             + ", ".join(DEFAULT_COMMAND_SUGGESTIONS)
             + ". "
-            "Use clarify when the request is ambiguous, execute when it maps cleanly, reject when unsupported."
+            "Use execute only when you can map directly to one supported command. "
+            "Use clarify when the request sounds like a supported navigation action but remains ambiguous. "
+            "Use reject when the request is unsupported. "
+            "For execute, canonical_command must be exactly one supported command. "
+            "For clarify, canonical_command must be null and suggestions must contain 1 or 2 supported commands. "
+            "For reject, canonical_command must be null. "
+            "Examples: "
+            "'move backwards' -> execute 'move south'. "
+            "'back up' -> execute 'move south'. "
+            "'take a step to the right' -> execute 'move east'. "
+            "'go over to the table' -> execute 'go to table'. "
+            "'pick up the mug' -> reject."
         ),
     }
     user_message = {"role": "user", "content": normalized}
@@ -75,6 +91,7 @@ def _interpret_with_llm(normalized: str) -> dict[str, Any] | None:
         "model": LLM_MODEL,
         "response_format": {"type": "json_object"},
         "messages": [prompt, user_message],
+        "temperature": 0.1,
     }
 
     try:
@@ -93,7 +110,7 @@ def _normalize_llm_result(normalized: str, parsed: dict[str, Any]) -> dict[str, 
     canonical_command = str(parsed.get("canonical_command", "")).strip().lower() or None
     message = str(parsed.get("message", "")).strip()
     spoken_response = str(parsed.get("spoken_response", "")).strip() or message
-    suggestions = _coerce_suggestions(parsed.get("suggestions", []))
+    suggestions = _coerce_supported_commands(parsed.get("suggestions", []))
 
     if disposition not in {"execute", "clarify", "reject"}:
         return None
@@ -102,7 +119,7 @@ def _normalize_llm_result(normalized: str, parsed: dict[str, Any]) -> dict[str, 
         if canonical_command is None:
             canonical_command = normalized
         try:
-            intent = parse_navigation_command(canonical_command)
+            intent = parse_dojo_command(canonical_command)
         except CommandParseError:
             return None
         return {
@@ -116,11 +133,17 @@ def _normalize_llm_result(normalized: str, parsed: dict[str, Any]) -> dict[str, 
             "intent": intent,
         }
 
+    if canonical_command is not None and _is_supported_command(canonical_command):
+        if disposition == "clarify" and canonical_command not in suggestions:
+            suggestions = [canonical_command] + suggestions
+    canonical_command = None
+
+    fallback_message = _build_non_execute_message(disposition, suggestions)
     return {
         "interpretation": {
             "disposition": disposition,
-            "message": message or "I could not confidently interpret that command.",
-            "spoken_response": spoken_response or message or "I could not confidently interpret that command.",
+            "message": message or fallback_message,
+            "spoken_response": spoken_response or message or fallback_message,
             "canonical_command": canonical_command,
             "suggestions": suggestions[:2],
         },
@@ -128,19 +151,19 @@ def _normalize_llm_result(normalized: str, parsed: dict[str, Any]) -> dict[str, 
     }
 
 
-def _interpret_with_heuristics(normalized: str) -> dict[str, Any]:
+def _interpret_with_pre_llm_heuristics(normalized: str) -> dict[str, Any] | None:
     direction_hint = _extract_direction_hint(normalized)
     if direction_hint is not None:
-        message = "Did you mean %s?" % direction_hint
+        intent = parse_navigation_command(direction_hint)
         return {
             "interpretation": {
-                "disposition": "clarify",
-                "message": message,
-                "spoken_response": message,
-                "canonical_command": None,
-                "suggestions": [direction_hint],
+                "disposition": "execute",
+                "message": _build_execution_message(intent),
+                "spoken_response": _build_execution_message(intent),
+                "canonical_command": direction_hint,
+                "suggestions": [],
             },
-            "intent": None,
+            "intent": intent,
         }
 
     waypoint_command = _extract_waypoint_command(normalized)
@@ -170,9 +193,13 @@ def _interpret_with_heuristics(normalized: str) -> dict[str, Any]:
             "intent": intent,
         }
 
+    return None
+
+
+def _interpret_with_post_llm_heuristics(normalized: str) -> dict[str, Any]:
     unsupported_keywords = {"pick", "grab", "lift", "open", "close", "wave", "dance"}
     if any(keyword in normalized.split(" ") for keyword in unsupported_keywords):
-        message = "I can help with navigation right now. Try move north or go to table."
+        message = "I can help with navigation right now. Try saying move north or go to table."
         return {
             "interpretation": {
                 "disposition": "reject",
@@ -186,10 +213,7 @@ def _interpret_with_heuristics(normalized: str) -> dict[str, Any]:
 
     close_matches = difflib.get_close_matches(normalized, DEFAULT_COMMAND_SUGGESTIONS, n=2, cutoff=0.45)
     if close_matches:
-        if len(close_matches) == 1:
-            message = "Did you mean %s?" % close_matches[0]
-        else:
-            message = "Did you mean %s or %s?" % (close_matches[0], close_matches[1])
+        message = _build_clarification_message(close_matches)
         return {
             "interpretation": {
                 "disposition": "clarify",
@@ -201,7 +225,7 @@ def _interpret_with_heuristics(normalized: str) -> dict[str, Any]:
             "intent": None,
         }
 
-    message = "I did not understand that yet. Try move north, go to table, or stop."
+    message = "I did not catch a supported navigation command. Try move north, go to table, or stop."
     return {
         "interpretation": {
             "disposition": "reject",
@@ -215,10 +239,48 @@ def _interpret_with_heuristics(normalized: str) -> dict[str, Any]:
 
 
 def _extract_direction_hint(normalized: str) -> str | None:
-    forward_phrases = {"move forward", "go forward", "forward", "walk forward"}
-    backward_phrases = {"move backward", "move backwards", "go backward", "go backwards", "backward", "backwards", "move back", "go back"}
-    left_phrases = {"move left", "go left", "left"}
-    right_phrases = {"move right", "go right", "right"}
+    forward_phrases = {
+        "move forward",
+        "go forward",
+        "forward",
+        "walk forward",
+        "step forward",
+        "take a step forward",
+        "go ahead",
+        "walk ahead",
+    }
+    backward_phrases = {
+        "move backward",
+        "move backwards",
+        "go backward",
+        "go backwards",
+        "backward",
+        "backwards",
+        "move back",
+        "go back",
+        "back up",
+        "step back",
+        "take a step back",
+        "walk back",
+    }
+    left_phrases = {
+        "move left",
+        "go left",
+        "left",
+        "step left",
+        "take a step left",
+        "take a step to the left",
+        "move to the left",
+    }
+    right_phrases = {
+        "move right",
+        "go right",
+        "right",
+        "step right",
+        "take a step right",
+        "take a step to the right",
+        "move to the right",
+    }
 
     if normalized in forward_phrases:
         return "move north"
@@ -238,8 +300,13 @@ def _extract_waypoint_command(normalized: str) -> str | None:
         "head to ",
         "walk to ",
         "navigate to ",
+        "go over to ",
+        "head over to ",
+        "walk over to ",
         "please go to ",
         "please move to ",
+        "please head to ",
+        "please go over to ",
     )
     for prefix in prefixes:
         if normalized.startswith(prefix):
@@ -277,13 +344,56 @@ def _execute_response(canonical_command: str, intent: dict[str, Any]) -> dict[st
 def _build_execution_message(intent: dict[str, Any]) -> str:
     if intent["intent"] == "stop_motion":
         return "Okay, stopping the robot."
-    target = str(intent.get("target", "")).replace("_", " ")
     if intent["intent"] == "move_direction":
-        return "Okay, moving %s." % intent.get("direction", target)
-    return "Okay, heading to %s." % target
+        return "Okay, moving %s." % intent.get("direction", "there")
+    if intent["intent"] == "navigate_to":
+        return "Okay, heading to %s." % str(intent.get("target", "")).replace("_", " ")
+    if intent["intent"] == "navigate_to_object":
+        return "Okay, moving to the %s." % str(intent.get("target_object", "")).replace("_", " ")
+    if intent["intent"] == "inspect_scene":
+        return "Okay, taking a look around the dojo."
+    if intent["intent"] == "inspect_object":
+        return "Okay, inspecting the %s." % str(intent.get("target_object", "")).replace("_", " ")
+    if intent["intent"] == "inspect_surface":
+        return "Okay, inspecting the %s." % str(intent.get("target_surface", "")).replace("_", " ")
+    if intent["intent"] == "pick_up_object":
+        return "Okay, picking up the %s." % str(intent.get("target_object", "")).replace("_", " ")
+    if intent["intent"] == "place_object":
+        return "Okay, placing the %s on the %s." % (
+            str(intent.get("target_object", "")).replace("_", " "),
+            str(intent.get("target_surface", "")).replace("_", " "),
+        )
+    return "Okay, handling that task."
 
 
-def _coerce_suggestions(value: Any) -> list[str]:
+def _build_non_execute_message(disposition: str, suggestions: list[str]) -> str:
+    if disposition == "clarify":
+        return _build_clarification_message(suggestions)
+    return "I can help with navigation commands like move north, go to table, or stop."
+
+
+def _build_clarification_message(suggestions: list[str]) -> str:
+    if len(suggestions) == 1:
+        return "I heard something close to that. Did you mean %s?" % suggestions[0]
+    if len(suggestions) >= 2:
+        return "I heard something close to that. Did you mean %s or %s?" % (suggestions[0], suggestions[1])
+    return "I think that was close to a navigation command, but I need a little more detail."
+
+
+def _coerce_supported_commands(value: Any) -> list[str]:
     if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
+        suggestions: list[str] = []
+        for item in value:
+            command = str(item).strip().lower()
+            if command and _is_supported_command(command) and command not in suggestions:
+                suggestions.append(command)
+        return suggestions
     return []
+
+
+def _is_supported_command(command: str) -> bool:
+    try:
+        parse_dojo_command(command)
+    except CommandParseError:
+        return False
+    return True

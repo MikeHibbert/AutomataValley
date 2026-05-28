@@ -18,7 +18,7 @@ class CommandPayload(BaseModel):
     source: str = "dojo_voice"
     transcript: str
     command_text: str
-    command_type: Literal["navigation"] = "navigation"
+    command_type: Literal["navigation", "inspection", "manipulation", "multimodal"] = "navigation"
     metadata: CommandMetadata | None = None
 
 
@@ -35,6 +35,18 @@ class ValleyCommandResponse(BaseModel):
     task_id: str | None = None
     intent: dict[str, Any] | None = None
     events: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ObservationRequestMetadata(BaseModel):
+    source: Literal["image_upload", "live_feed_snapshot"] = "image_upload"
+    note: str | None = None
+
+
+class ImageObservationResponse(BaseModel):
+    ok: bool = True
+    message: str
+    observations: list[dict[str, Any]] = Field(default_factory=list)
+    world: dict[str, Any]
 
 
 class HealthResponse(BaseModel):

@@ -1,0 +1,155 @@
+{
+  "profile_id": "walker_tienkung_sim",
+  "display_name": "UBTech Walker Tienkung (Simulated)",
+  "vendor": "UBTech",
+  "model": "Walker Tienkung",
+  "software_version": "sim-1",
+  "runtime": {
+    "control_plane": "mcp_gateway",
+    "simulation_mode_supported": true,
+    "shadow_mode_supported": false,
+    "recommended_host_os": "Cross-platform",
+    "notes": [
+      "Internal deterministic simulation profile for AutomataValley runtime testing.",
+      "Use this profile when no robot hardware or ROS domain is available."
+    ]
+  },
+  "capabilities": {
+    "robot.status.get": true,
+    "robot.power.get": true,
+    "robot.estop.get": true,
+    "robot.imu.get": true,
+    "robot.joints.get": true,
+    "robot.vision.capture_color": true,
+    "robot.vision.capture_depth": true,
+    "robot.motion.set_mode": true,
+    "robot.motion.set_velocity": true,
+    "robot.motion.stop": true,
+    "robot.head.move": true,
+    "robot.waist.move": true,
+    "robot.arm.move_pose": true
+  },
+  "transports": [
+    {
+      "name": "simulated",
+      "role": "primary",
+      "protocol": "in_process",
+      "notes": "Runs a deterministic robot simulation inside the Valley process."
+    }
+  ],
+  "interfaces": {
+    "battery_status": {
+      "normalized_capability": "robot.power.get",
+      "entity_type": "virtual",
+      "entity_name": "sim://power/battery",
+      "message_type": "sim/BatteryStatus",
+      "writeable": false
+    },
+    "estop_status": {
+      "normalized_capability": "robot.estop.get",
+      "entity_type": "virtual",
+      "entity_name": "sim://safety/estop",
+      "message_type": "sim/EstopStatus",
+      "writeable": false
+    },
+    "imu_standard": {
+      "normalized_capability": "robot.imu.get",
+      "entity_type": "virtual",
+      "entity_name": "sim://sensors/imu",
+      "message_type": "sim/Imu",
+      "writeable": false
+    },
+    "motion_status": {
+      "normalized_capability": "robot.status.get",
+      "entity_type": "virtual",
+      "entity_name": "sim://motion/status",
+      "message_type": "sim/MotionStatus",
+      "writeable": false
+    },
+    "cmd_vel": {
+      "normalized_capability": "robot.motion.set_velocity",
+      "entity_type": "virtual",
+      "entity_name": "sim://motion/cmd_vel",
+      "message_type": "sim/Twist",
+      "rate_hz": 20,
+      "required_mode": "walk",
+      "writeable": true
+    },
+    "motion_mode": {
+      "normalized_capability": "robot.motion.set_mode",
+      "entity_type": "virtual",
+      "entity_name": "sim://motion/mode",
+      "message_type": "sim/MotionMode",
+      "writeable": true
+    },
+    "motion_stop": {
+      "normalized_capability": "robot.motion.stop",
+      "entity_type": "virtual",
+      "entity_name": "sim://motion/stop",
+      "message_type": "sim/Stop",
+      "writeable": true
+    },
+    "head_position_command": {
+      "normalized_capability": "robot.head.move",
+      "entity_type": "virtual",
+      "entity_name": "sim://joints/head",
+      "message_type": "sim/HeadPose",
+      "writeable": true
+    },
+    "waist_position_command": {
+      "normalized_capability": "robot.waist.move",
+      "entity_type": "virtual",
+      "entity_name": "sim://joints/waist",
+      "message_type": "sim/WaistPose",
+      "writeable": true
+    },
+    "arm_position_command": {
+      "normalized_capability": "robot.arm.move_pose",
+      "entity_type": "virtual",
+      "entity_name": "sim://joints/arm_pose",
+      "message_type": "sim/ArmPose",
+      "writeable": true
+    },
+    "joint_state": {
+      "normalized_capability": "robot.joints.get",
+      "entity_type": "virtual",
+      "entity_name": "sim://joints/state",
+      "message_type": "sim/JointState",
+      "writeable": false
+    },
+    "color_image": {
+      "normalized_capability": "robot.vision.capture_color",
+      "entity_type": "virtual",
+      "entity_name": "sim://vision/front_camera/color",
+      "message_type": "sim/ColorImage",
+      "writeable": false
+    },
+    "depth_image": {
+      "normalized_capability": "robot.vision.capture_depth",
+      "entity_type": "virtual",
+      "entity_name": "sim://vision/front_camera/depth",
+      "message_type": "sim/DepthImage",
+      "writeable": false
+    }
+  },
+  "safety": {
+    "requires_estop_monitor": true,
+    "requires_mode_gate": true,
+    "default_motion_mode": "simulation_idle",
+    "forbidden_interfaces": [],
+    "notes": [
+      "Simulation keeps safety gate structure visible even without hardware.",
+      "Deterministic state updates make unit tests stable."
+    ]
+  },
+  "testing": {
+    "smoke_suite": [
+      "battery_status",
+      "estop_status",
+      "imu_standard",
+      "motion_status",
+      "color_image"
+    ],
+    "simulation_profile": "walker_tienkung_sim"
+  }
+}

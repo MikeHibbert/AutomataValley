@@ -11,7 +11,13 @@ Today the project supports:
 - local speech-to-text via an NVIDIA Parakeet service in Docker
 - command interpretation using local Ollama with `gemma3:latest`
 - spoken clarification and status responses through Godot's native text-to-speech
-- simple navigation commands such as `move north` and `go to table`
+- object-aware world bootstrap for the Dojo
+- simple scene observation from uploaded images
+- navigation, inspection, and early manipulation scaffolding
+- on-demand MCP-style vision sessions with start, snapshot, and stop actions
+- onboard robot camera selection for front, left, right, and rear snapshots
+- a generic robot runtime with profile-driven transport selection
+- an in-process simulation profile for Walker-style motion, status, and vision testing
 
 ## Current Status
 
@@ -24,6 +30,11 @@ The current goal is to let you:
 - submit text commands
 - use push-to-talk voice input
 - see the robot respond to navigation tasks
+- inspect the current mock dojo world model
+- upload a scene image to seed object observations
+- start and stop on-demand vision sessions instead of keeping vision always on
+- request a picture from a specific robot-mounted camera
+- exercise the robot runtime without hardware by using the internal Walker simulation profile
 
 Core command and interpreter tests are in place, and the backend stack is wired together. Voice input is functional but still being actively hardened, so if you are evaluating the project for the first time, start with typed commands before moving on to push-to-talk.
 
@@ -36,12 +47,13 @@ The current local setup is:
   - 3D room and robot view
   - operator UI
   - push-to-talk and transcript flow
+  - world/object panel with image observation entry point
 - `bridge`
   - FastAPI adapter between Dojo and Valley
-  - exposes bootstrap and Dojo-friendly command endpoints
+  - exposes bootstrap, command, image-observation, and on-demand vision endpoints
 - `valley`
   - FastAPI command service
-  - strict parser plus interpretation layer
+  - world model plus strict parser and interpretation layer
   - optional local LLM interpretation through Ollama
 - `stt`
   - FastAPI speech-to-text service
@@ -88,12 +100,17 @@ Key folders:
 - `docker/`
 - `tests/`
 - `docs/`
+- `robot_profiles/`
 
 Useful files:
 
 - `docker/compose.yml`
+- `check_stack.ps1`
 - `run_dojo.ps1`
 - `docs/v1-foundation.md`
+- `docs/generic-robot-runtime.md`
+- `robot_profiles/walker_tienkung_v2_0_5_1.json`
+- `robot_profiles/walker_tienkung_sim.json`
 
 ## Getting Started
 
@@ -152,6 +169,12 @@ The Dojo bootstrap endpoint is:
 http://localhost:8002/api/bootstrap
 ```
 
+You can also run the local health-check script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\check_stack.ps1
+```
+
 ### 5. Set Your Godot Path
 
 The launcher script currently expects Godot at:
@@ -187,6 +210,11 @@ Once the Dojo is connected to the bridge, start by typing commands such as:
 - `move east`
 - `move west`
 - `go to table`
+- `go to the mug`
+- `look at the screwdriver`
+- `what can you see`
+- `pick up the mug`
+- `place the mug on the table`
 - `go to door`
 - `go to center`
 - `go to charging station`
@@ -225,6 +253,76 @@ If Valley cannot confidently interpret the request, it can return:
 
 The Dojo can then surface suggestions such as `Did you mean move south?`
 
+### Scene Observation
+
+The Dojo now includes a world panel with a first-pass observation flow:
+
+1. Click `Upload Image`.
+2. Select a local scene image.
+3. Click `Observe Image`.
+4. Review the observation result and the currently known objects list.
+
+This is a foundation step toward richer perception and future live-feed support. The current image observer is still a mock grounding layer, not a full visual recognition model.
+
+### On-Demand Vision Tools
+
+The Dojo world panel now also includes the first on-demand vision workflow:
+
+1. Choose a robot camera such as `Front Camera`, `Left Camera`, `Right Camera`, or `Rear Camera`.
+2. Click `Start Vision`.
+3. When a session is active, click `Snapshot`.
+4. The Dojo captures a picture from the selected onboard robot camera and reports it back through the bridge.
+5. Review the returned scene summary in the observation panel.
+6. Click `Stop Vision` when inspection is complete.
+
+This now uses a robot camera rig inside the Dojo scene rather than only returning a generic world summary.
+
+The current prototype camera path works like this:
+
+- the bridge queues a pending snapshot request
+- the Dojo polls for that request
+- the selected robot camera captures a shot
+- the Dojo reports the image and metadata back to the bridge
+- MCP-style callers can then inspect the latest reported snapshot state
+
+This means the contract is already aligned with tool-driven on-demand perception, even though the current implementation is still local and prototype-oriented.
+
+The bridge-exposed MCP-oriented tool surface is:
+
+- `vision_status`
+- `vision_start`
+- `vision_snapshot`
+- `vision_stop`
+
+The current design goal remains that vision is requested when needed and released when it is not, rather than streaming continuously.
+
+### Robot Cameras
+
+The prototype now includes these onboard robot cameras in the Dojo scene:
+
+- `front_cam`
+- `left_cam`
+- `right_cam`
+- `rear_cam`
+
+Each camera can be selected for on-demand inspection snapshots.
+
+### Generic Robot Runtime
+
+The repository now includes an internal robot runtime layer that loads:
+
+- a robot profile from `robot_profiles/`
+- a supported transport adapter from `valley/app/robot_runtime/`
+- normalized capabilities for motion, status, and observation
+
+The current runtime path supports:
+
+- a real Walker-oriented ROS 2 profile that currently resolves to the rosbridge scaffold
+- a `walker_tienkung_sim` profile that runs entirely in process
+- deterministic motion, status, power, IMU, joint, and camera behavior for tests
+
+This means the backend can already validate robot-control flows before a physical robot or ROS deployment is available.
+
 ## Developer Workflow
 
 ### Rebuild The Backend After Changes
@@ -250,6 +348,12 @@ docker logs automatavalley-stt-1 --tail 200
 docker logs automatavalley-tts-1 --tail 200
 ```
 
+Run the quick health check with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\check_stack.ps1
+```
+
 Stop the stack with:
 
 ```bash
@@ -261,7 +365,7 @@ docker compose -f docker/compose.yml down
 Run the current Python tests from the repository root:
 
 ```bash
-python -m unittest tests.test_navigation tests.test_interpreter
+python -m unittest tests.test_navigation tests.test_interpreter tests.test_vision_tools tests.test_robot_runtime
 ```
 
 Validate the Godot project headlessly:
@@ -280,6 +384,13 @@ Current local endpoints:
 - Bridge health: `GET http://localhost:8002/health`
 - Bridge bootstrap: `GET http://localhost:8002/api/bootstrap`
 - Bridge Dojo commands: `POST http://localhost:8002/api/dojo/commands`
+- Bridge vision status: `GET http://localhost:8002/api/dojo/vision/status`
+- Bridge vision start: `POST http://localhost:8002/api/dojo/vision/start`
+- Bridge vision snapshot: `POST http://localhost:8002/api/dojo/vision/snapshot`
+- Bridge vision report: `POST http://localhost:8002/api/dojo/vision/report`
+- Bridge vision stop: `POST http://localhost:8002/api/dojo/vision/stop`
+- MCP tool catalog: `GET http://localhost:8002/api/mcp/tools`
+- MCP tool invoke: `POST http://localhost:8002/api/mcp/tools/invoke`
 - STT health: `GET http://localhost:8003/health`
 - STT text transcription: `POST http://localhost:8003/transcribe/text`
 - STT audio transcription: `POST http://localhost:8003/transcribe`
@@ -313,6 +424,7 @@ The Dojo currently posts a payload shaped like this:
 - The first real Parakeet startup can take time because the model and dependencies need to initialize.
 - The Dojo currently uses Godot native text-to-speech rather than the Docker TTS service for in-app playback.
 - Push-to-talk and the transcription handoff are functional but still being refined.
+- The robot runtime currently exposes an internal simulation path and a rosbridge scaffold; it does not yet drive a live Walker robot.
 
 ## Next Steps
 
